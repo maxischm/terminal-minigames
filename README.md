@@ -1,1 +1,1 @@
-# terminal-snake
+# terminal-minigames
