@@ -84,43 +84,18 @@ namespace TerminalMinigames
         {
             food_position.SetCenter(3.5f + uniform_distribution_x(generator) * movement_offset, 5 + uniform_distribution_y(generator) * movement_offset);
         }
-        //if (std::find_if(game_state.snake_position_queue.begin(), game_state.snake_position_queue.end(), Pixel(51.5f, 25)) != game_state.snake_position_queue.end())
-        //{
-        //    std::cout << "foo";
-        //}
 
         (*current_game_state).food_positions.insert(food_position);
     }
 
-    void HandleRightInput(Pixel* new_head_pos, SnakeGameState* current_game_state)
+    void HandleInput(Pixel* new_head_pos, SnakeGameState* current_game_state, MovementDirection new_direction, int x_offset, int y_offset)
     {
-        (*current_game_state).current_movement_direction = MovementDirection::Right;
+        (*current_game_state).current_movement_direction = new_direction;
 
-        (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center) + movement_offset, std::get<1>((*new_head_pos).center)});
+        (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center) + x_offset, std::get<1>((*new_head_pos).center) + y_offset});
     }
 
-    void HandleLeftInput(Pixel* new_head_pos, SnakeGameState* current_game_state)
-    {
-        (*current_game_state).current_movement_direction = MovementDirection::Left;
-
-        (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center) - movement_offset, std::get<1>((*new_head_pos).center)});
-    }
-
-    void HandleUpInput(Pixel* new_head_pos, SnakeGameState* current_game_state)
-    {
-        (*current_game_state).current_movement_direction = MovementDirection::Up;
-
-        (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center), std::get<1>((*new_head_pos).center) - movement_offset});
-    }
-
-    void HandleDownInput(Pixel* new_head_pos, SnakeGameState* current_game_state)
-    {
-        (*current_game_state).current_movement_direction = MovementDirection::Down;
-
-        (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center), std::get<1>((*new_head_pos).center) + movement_offset});
-    }
-
-    void HandleLeftMovement(Pixel* new_head_pos, SnakeGameState* current_game_state)
+    void HandleLeftRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_left)
     {
         switch (game_state.last_input)
         {
@@ -128,45 +103,30 @@ namespace TerminalMinigames
         case InputDirection::Left:
         case InputDirection::Right:
         {
-            (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center) - movement_offset, std::get<1>((*new_head_pos).center)});
+            if (moves_left)
+            {
+                (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center) - movement_offset, std::get<1>((*new_head_pos).center)});
+            }
+            else
+            {
+                (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center) + movement_offset, std::get<1>((*new_head_pos).center)});
+            }
             break;
         }
         case InputDirection::Up:
         {
-            HandleUpInput(new_head_pos, current_game_state);
+            HandleInput(new_head_pos, current_game_state, MovementDirection::Up, 0, -movement_offset);
             break;
         }
         case InputDirection::Down:
         {
-            HandleDownInput(new_head_pos, current_game_state);
+            HandleInput(new_head_pos, current_game_state, MovementDirection::Down, 0, movement_offset);
+            break;
         }
         }
     }
 
-    void HandleRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state)
-    {
-        switch (game_state.last_input)
-        {
-        case InputDirection::None:
-        case InputDirection::Left:
-        case InputDirection::Right:
-        {
-            (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center) + movement_offset, std::get<1>((*new_head_pos).center)});
-            break;
-        }
-        case InputDirection::Up:
-        {
-            HandleUpInput(new_head_pos, current_game_state);
-            break;
-        }
-        case InputDirection::Down:
-        {
-            HandleDownInput(new_head_pos, current_game_state);
-        }
-        }
-    }
-
-    void HandleDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state)
+    void HandleUpDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_up)
     {
         switch (game_state.last_input)
         {
@@ -174,41 +134,36 @@ namespace TerminalMinigames
         case InputDirection::Down:
         case InputDirection::Up:
         {
-            (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center), std::get<1>((*new_head_pos).center) + movement_offset});
+            if (moves_up)
+            {
+                (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center), std::get<1>((*new_head_pos).center) - movement_offset});
+            }
+            else
+            {
+                (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center), std::get<1>((*new_head_pos).center) + movement_offset});
+            }
             break;
         }
         case InputDirection::Left:
         {
-            HandleLeftInput(new_head_pos, current_game_state);
+            HandleInput(new_head_pos, current_game_state, MovementDirection::Left, -movement_offset, 0);
             break;
         }
         case InputDirection::Right:
         {
-            HandleRightInput(new_head_pos, current_game_state);
+            HandleInput(new_head_pos, current_game_state, MovementDirection::Right, movement_offset, 0);
+            break;
         }
         }
     }
 
-    void HandleUpMovement(Pixel* new_head_pos, SnakeGameState* current_game_state)
+    void PrintGameOverToCanvas(ftxui::Canvas* canvas)
     {
-        switch (game_state.last_input)
+        int y_index = 28;
+        for (const std::string text : game_over_string)
         {
-        case InputDirection::None:
-        case InputDirection::Down:
-        case InputDirection::Up:
-        {
-            (*new_head_pos).SetCenter(std::tuple<float, int> {std::get<0>((*new_head_pos).center), std::get<1>((*new_head_pos).center) - movement_offset});
-            break;
-        }
-        case InputDirection::Left:
-        {
-            HandleLeftInput(new_head_pos, current_game_state);
-            break;
-        }
-        case InputDirection::Right:
-        {
-            HandleRightInput(new_head_pos, current_game_state);
-        }
+            (*canvas).DrawText(36, y_index, text);
+            y_index += 4;
         }
     }
 
@@ -263,6 +218,11 @@ namespace TerminalMinigames
                 // Unlock all mutexes
                 snake_positions_mutex.unlock();
                 food_positions_mutex.unlock();
+
+                if (game_state.isDead)
+                {
+                    PrintGameOverToCanvas(&canvas);
+                }
                     
                 return ftxui::canvas(std::move(canvas));
             });
@@ -274,6 +234,11 @@ namespace TerminalMinigames
         auto quit_button = ftxui::Button(&quit_button_label, [&] { quit_function(); });
         container->Add(quit_button);
 
+        // Restart button
+        std::string restart_button_label = "Restart";
+        auto restart_button = ftxui::Button(&restart_button_label, [&] { game_state.Reset(); food_positions_mutex.lock(); SpawnFood(&game_state); food_positions_mutex.unlock(); });
+        container->Add(restart_button);
+
         auto game_view_renderer = ftxui::Renderer(container, [&]
                                         { 
                                             auto length_text = std::format("Length: {}", game_state.snake_position_queue.size());
@@ -283,7 +248,11 @@ namespace TerminalMinigames
                                                 ftxui::text(length_text), 
                                                 ftxui::hbox({
                                                     board_renderer->Render(),
-                                                    quit_button->Render()
+                                                    ftxui::vbox({
+                                                        quit_button->Render(),
+                                                        restart_button->Render(),
+                                                        ftxui::filler()
+                                                    })
                                                 })
                                             }); 
                                         });
@@ -322,7 +291,7 @@ namespace TerminalMinigames
 
             while (!(*back_to_menu) && !game_state.isDead)
             {
-                // wait 1s:
+                // wait certain amount of time before updating position:
                 using namespace std::chrono_literals;
                 std::this_thread::sleep_for(0.5s);
 
@@ -336,23 +305,15 @@ namespace TerminalMinigames
                 switch (game_state.current_movement_direction)
                 {
                 case MovementDirection::Left:
-                {
-                    HandleLeftMovement(&new_head_pos, &game_state);
-                    break;
-                }
                 case MovementDirection::Right:
                 {
-                    HandleRightMovement(&new_head_pos, &game_state);
+                    HandleLeftRightMovement(&new_head_pos, &game_state, game_state.current_movement_direction == MovementDirection::Left);
                     break;
                 }
                 case MovementDirection::Up:
-                {
-                    HandleUpMovement(&new_head_pos, &game_state);
-                    break;
-                }
                 case MovementDirection::Down:
                 {
-                    HandleDownMovement(&new_head_pos, &game_state);
+                    HandleUpDownMovement(&new_head_pos, &game_state, game_state.current_movement_direction == MovementDirection::Up);
                     break;
                 }
                 }

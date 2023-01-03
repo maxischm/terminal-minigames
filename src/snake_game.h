@@ -2,6 +2,14 @@
 
 namespace TerminalMinigames
 {
+    const std::vector<std::string> game_over_string = { 
+        "  _____                        ____",
+        " / ____|                      / __ \\",
+        "| |  __  __ _ _ __ ___   ___ | |  | |_   _____ _ __",
+        "| | |_ |/ _` | '_ ` _ \\ / _ \\| |  | \\ \\ / / _ \\ '__|",
+        "| |__| | (_| | | | | | |  __/| |__| |\\ V / __/ |",
+        " \\_____|\\__,_|_| |_| |_|\\___| \\____/  \\_/\\___|_|" };
+
     enum class InputDirection
     {
         Left,
@@ -126,16 +134,13 @@ namespace TerminalMinigames
     std::uniform_int_distribution<> uniform_distribution_y(food_y_offset_min_factor, food_y_offset_max_factor);
 
     void SpawnFood(SnakeGameState* current_game_state);
-    void HandleRightInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleLeftInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleUpInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleDownInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
 
-    void HandleLeftMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleUpMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
+    void HandleInput(Pixel* new_head_pos, SnakeGameState* current_game_state, MovementDirection new_direction, int x_offset, int y_offset);
+    void HandleLeftRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_left);
+    void HandleUpDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_up);
 
     template<typename Functor>
     void ExecuteSnake(Functor quit_function, bool* back_to_menu);
+
+    void PrintGameOverToCanvas(ftxui::Canvas* canvas);
 }

@@ -26,10 +26,13 @@ namespace TerminalMinigames
         component->Add(start_game_button);
 
         auto renderer = ftxui::Renderer(component, [&]
-                                        { return ftxui::vbox({ftxui::text("Terminal Minigames") | ftxui::bold | ftxui::center,
-                                                              game_selection_dropdown->Render(),
-                                                              ftxui::paragraph(game_descriptions[selected_game]),
-                                                              start_game_button->Render()}); });
+            { return ftxui::vbox({ ftxui::text("Terminal Minigames") | ftxui::bold | ftxui::center,
+                                    game_selection_dropdown->Render(),
+                                    ftxui::vbox({
+                                        ftxui::paragraph(game_descriptions[selected_game]),
+                                        ftxui::filler(),
+                                        start_game_button->Render()
+                                    }) | ftxui::center}); });
         screen.Loop(renderer);
     }
 

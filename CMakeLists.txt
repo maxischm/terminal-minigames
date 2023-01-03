@@ -12,7 +12,7 @@ link_directories(
 
 add_executable(TerminalMinigames src/main.cpp "src/main_menu.h" "src/snake_game.h")
 
-add_library(terminalMinigamesLib STATIC src/main_menu.cpp src/snake_game.cpp "src/main_menu.h" "src/snake_game.h")
+add_library(terminalMinigamesLib STATIC src/main_menu.cpp "src/snake_game.cpp" "src/main_menu.h" "src/snake_game.h")
 target_include_directories(terminalMinigamesLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 find_package(ftxui CONFIG REQUIRED)
