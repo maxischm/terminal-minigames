@@ -2,6 +2,20 @@
 
 namespace TerminalMinigames
 {
+    /**
+     * String vector containing the different lines to print "Game Over" to the screen.
+     */
+    const std::vector<std::string> game_over_string = { 
+        "  _____                        ____",
+        " / ____|                      / __ \\",
+        "| |  __  __ _ _ __ ___   ___ | |  | |_   _____ _ __",
+        "| | |_ |/ _` | '_ ` _ \\ / _ \\| |  | \\ \\ / / _ \\ '__|",
+        "| |__| | (_| | | | | | |  __/| |__| |\\ V / __/ |",
+        " \\_____|\\__,_|_| |_| |_|\\___| \\____/  \\_/\\___|_|" };
+
+    /**
+     * Enum listing all available input directions.
+     */
     enum class InputDirection
     {
         Left,
@@ -11,6 +25,9 @@ namespace TerminalMinigames
         None
     };
 
+    /**
+     * Enum listing all the avilable movement directions for the snake.
+     */
     enum class MovementDirection
     {
         Left,
@@ -45,6 +62,9 @@ namespace TerminalMinigames
         void SetCenter(std::tuple<float, int> new_center);
         void SetCenter(float new_center_x, int new_center_y);
 
+        /**
+         * Prints the pixel to the given canvas in the given color by printing the individual points as blocks.
+         */
         void DrawPixel(ftxui::Canvas* canvas, ftxui::Color color);
 
         /**
@@ -72,21 +92,43 @@ namespace TerminalMinigames
         };
     };
 
+    /**
+     * Struct containing all the information required for maintaining the current state of the game.
+     */
     struct SnakeGameState
     {
+        /**
+         * Flag whether the player died or not.
+         */
         bool isDead = false;
+        /**
+         * Length of the snake.
+         */
         int snake_length = 4;
+        /**
+         * Double-ended queue containing the snake's positions in form of TerminalMinigames::Pixel instances.
+         */
         std::deque<Pixel> snake_position_queue = {
                 Pixel(47.5f, 25),
                 Pixel(51.5f, 25),
                 Pixel(55.5f, 25),
                 Pixel(59.5f, 25) };
-
+        /**
+         * Last input caught.
+         */
         std::atomic<InputDirection> last_input = InputDirection::None ;
+        /**
+         * Current movement direction of the snake.
+         */
         std::atomic<MovementDirection> current_movement_direction = MovementDirection::Left;
-
+        /**
+         * Set containing the positions of the food for the snake.
+         */
         std::unordered_set<Pixel, Pixel::HashFunction> food_positions = {};
         
+        /**
+         * Resets the game state to start a fresh game.
+         */
         void Reset()
         {
             isDead = false;
@@ -102,22 +144,64 @@ namespace TerminalMinigames
         }
     };
 
+    /**
+     * Instance of the game state struct.
+     */
     SnakeGameState game_state;
+    /**
+     * Mutex for accessing the snake positions queue.
+     */
     std::mutex snake_positions_mutex;
+    /**
+     * Mutex for accessing the food positions set.
+     */
     std::mutex food_positions_mutex;
 
+    /**
+     * Size of the step to move a TerminalMinigames::Pixel's center point to move it on the canvas.
+     */
     int movement_offset = 4;
 
+    /**
+     * Width of the canvas.
+     */
     int board_dimension_x = 200;
+    /**
+     * Height of the canvas.
+     */
     int board_dimension_y = 100;
+    /**
+     * Min position on the x-axis to put a pixel's center.
+     */
     const int min_x_dimension = 3;
+    /**
+     * Min position on the y-axis to put a pixel's center.
+     */
     const int min_y_dimension = 3;
+    /**
+     * Max position on the x-axis to put a pixel's center.
+     */
     const int max_x_dimension = 196;
+    /**
+     * Max position on the y-axis to put a pixel's center.
+     */
     const int max_y_dimension = 96;
 
+    /**
+     * Max factor to multiply the movement_offset by to position the food on the x-axis of the canvas.
+     */
     const int food_x_offset_max_factor = 48;
+    /**
+     * Min factor to multiply the movement_offset by to position the food on the x-axis of the canvas.
+     */
     const int food_x_offset_min_factor = 1;
+    /**
+     * Max factor to multiply the movement_offset by to position the food on the y-axis of the canvas.
+     */
     const int food_y_offset_max_factor = 22;
+    /**
+     * Min factor to multiply the movement_offset by to position the food on the y-axis of the canvas.
+     */
     const int food_y_offset_min_factor = 1;
 
     std::random_device random_device;
@@ -125,17 +209,35 @@ namespace TerminalMinigames
     std::uniform_int_distribution<> uniform_distribution_x(food_x_offset_min_factor, food_x_offset_max_factor);
     std::uniform_int_distribution<> uniform_distribution_y(food_y_offset_min_factor, food_y_offset_max_factor);
 
+    /**
+     * Spawns food by putting it in the passed game state's food position set.
+     * The newly added food position is then drawn on the next draw call of the canvas.
+     */
     void SpawnFood(SnakeGameState* current_game_state);
-    void HandleRightInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleLeftInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleUpInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleDownInput(Pixel* new_head_pos, SnakeGameState* current_game_state);
 
-    void HandleLeftMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
-    void HandleUpMovement(Pixel* new_head_pos, SnakeGameState* current_game_state);
+    /**
+     * Handles movement when an input was received.
+     */
+    void HandleInput(Pixel* new_head_pos, SnakeGameState* current_game_state, MovementDirection new_direction, int x_offset, int y_offset);
+    /**
+     * Handles snake movement when the movement direction is either left or right.
+     */
+    void HandleLeftRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_left);
+    /**
+     * Handles snake movement when the movement direction is either up or down.
+     */
+    void HandleUpDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_up);
 
+    /**
+     * Main function for the snake game.
+     * @param quit_function Function executed when the player presses the back to menu button.
+     * @param back_to_menu Flag whether the player wants to go back to the menu. Required by the main menu.
+     */
     template<typename Functor>
     void ExecuteSnake(Functor quit_function, bool* back_to_menu);
+
+    /**
+     * Prints the game over text to the given canvas.
+     */
+    void PrintGameOverToCanvas(ftxui::Canvas* canvas);
 }
