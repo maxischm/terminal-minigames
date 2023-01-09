@@ -21,6 +21,12 @@ namespace TerminalMinigames
 	namespace BlockBreaker
 	{
 		/** Definitions of member functions. **/
+		
+		void Block::Draw(ftxui::Canvas& canvas)
+		{
+			canvas.DrawBlockLine(end_left.x, end_left.y, end_right.x, end_left.y);
+			canvas.DrawBlockLine(end_left.x, end_right.y, end_right.x, end_right.y);
+		}
 
 		struct BlockBreakerConfig
 		{
@@ -31,7 +37,7 @@ namespace TerminalMinigames
 			int paddle_height = 1;
 			int paddle_step_size = 2;
 			Vector2D::Vector2D paddle_start_position = { 47, 88 };
-			float ball_speed = 5.f;
+			float ball_speed = 10.f;
 
 			/**
 			 * Minimum angle theta that the ball will be returned at from the paddle.
@@ -39,41 +45,44 @@ namespace TerminalMinigames
 			float min_theta = 20.f;
 		} block_breaker_config;
 
-		void BlockBreakerGameState::Reset(BlockBreakerGameState& game_state)
+		void BlockBreakerGameState::Reset()
 		{
 			// Init rows of blocks to destroy:
-			for (float y = 6; y < 11; y += 4)
+			for (double y = 6.f; y < 13.f; y += 6.f)
 			{
-				for (float x = 4; x < 97; x += 8)
+				for (double x = 4.f; x < 97.f; x += 8.f)
 				{
-					Block b = { { x, y }, { x + 5, y } };
+					Block b = { { x, y }, { x + 5.f, y + 2.f } };
 					block_positions.insert(b);
 				}
 			}
 
 			score = 0;
-			game_state.paddle_position = block_breaker_config.paddle_start_position;
-			game_state.ball_position = { paddle_position.x, paddle_position.y - block_breaker_config.paddle_height - 2 };
-			game_state.ball_direction = { -block_breaker_config.ball_speed, -block_breaker_config.ball_speed };
+			paddle_position = block_breaker_config.paddle_start_position;
+			ball_position = { paddle_position.x, paddle_position.y - block_breaker_config.paddle_height - 2 };
+			//ball_position = { 5.f, 7.8f };
+			//ball_position_prev = { 5.f, 8.1f };
+			//ball_direction = { -block_breaker_config.ball_speed, -block_breaker_config.ball_speed };
+			ball_direction = { 0, -block_breaker_config.ball_speed };
+
+			lost = false;
 		}
 
 		/** **/
 
 		/** Variables needed for execution. **/
-
 		BlockBreakerGameState game_state;
-
 		std::mutex paddle_mutex;
 		std::mutex ball_mutex;
 		std::mutex block_positions_mutex;
 
-		BorderCollisions last_collision = BorderCollisions::None;
+		CollisionTypes last_collision = CollisionTypes::None;
 
 		/** **/
 
 		void ExecuteBlockBreaker(QuitFunction quit_function, bool* back_to_menu)
 		{
-			game_state.Reset(game_state);
+			game_state.Reset();
 
 			ftxui::Component event_catcher;
 
@@ -105,6 +114,10 @@ namespace TerminalMinigames
 					{
 						PrintGameOverToCanvas(canvas, Vector2D::Vector2D(12, 20), true);
 					}
+					else if (game_state.won)
+					{
+						PrintWonMessageToCanvas(canvas, Vector2D::Vector2D(6, 20));
+					}
 					else
 					{
 						// Draw ball:
@@ -113,12 +126,12 @@ namespace TerminalMinigames
 						ball_mutex.unlock();
 
 						// Draw blocks:
-						/*block_positions_mutex.lock();
-						for (auto& b : game_state.block_positions)
+						block_positions_mutex.lock();
+						for (auto b : game_state.block_positions)
 						{
-							canvas.DrawBlockLine(b.end_left.x, b.end_left.y, b.end_right.x, b.end_right.y);
+							b.Draw(canvas);
 						}
-						block_positions_mutex.unlock();*/
+						block_positions_mutex.unlock();
 					}
 
 					return ftxui::canvas(std::move(canvas));
@@ -133,13 +146,14 @@ namespace TerminalMinigames
 
 			// Restart button
 			std::string restart_button_label = "Restart";
-			auto restart_button = ftxui::Button(&restart_button_label, [&] { game_state.Reset(game_state); });
+			auto restart_button = ftxui::Button(&restart_button_label, [&] { game_state.Reset(); });
 			container->Add(restart_button);
 
 			auto screen_view_renderer = ftxui::Renderer(container, [&] {
 				auto score_text = std::format("Score: {}", game_state.score);
 				auto ball_position_text = std::format("Ball Position: {}", game_state.ball_position.ToString());
 				auto collision_text = std::format("Collision: {}", ToString(last_collision));
+				auto speed_text = std::format("Speed: {}", Vector2D::Magnitude(game_state.ball_direction));
 
 				return ftxui::vbox({
 					ftxui::text("Terminal Minigames") | ftxui::bold | ftxui::center,
@@ -153,7 +167,8 @@ namespace TerminalMinigames
 						})
 					}),
 					ftxui::text(ball_position_text),
-					ftxui::text(collision_text)
+					ftxui::text(collision_text),
+					ftxui::text(speed_text)
 					});
 			});
 
@@ -180,14 +195,9 @@ namespace TerminalMinigames
 
 						return true;
 					}
-					else if (e == ftxui::Event::ArrowDown)
+					else if (e == ftxui::Event::ArrowDown || e == ftxui::Event::ArrowUp)
 					{
-						//game_state.last_input = InputDirection::Down;
-						return true;
-					}
-					else if (e == ftxui::Event::ArrowUp)
-					{
-						//game_state.last_input = InputDirection::Up;
+						// Catch input but no actions to be done
 						return true;
 					}
 					return false;  
@@ -198,7 +208,7 @@ namespace TerminalMinigames
 				auto start = boost::chrono::high_resolution_clock::now();
 				double delta_time = 0;
 
-				while (!(*back_to_menu) && !game_state.lost)
+				while (!(*back_to_menu) && !game_state.lost && !game_state.won)
 				{
 					using namespace std::chrono_literals;
 					std::this_thread::sleep_for(1.0s / 30.f);
@@ -207,7 +217,10 @@ namespace TerminalMinigames
 					delta_time = boost::chrono::duration_cast<boost::chrono::milliseconds>(boost::chrono::high_resolution_clock::now() - start).count() / 1000.f;
 					start = boost::chrono::high_resolution_clock::now();
 
-					// Check for collision before or after movement?
+					ball_mutex.lock();
+
+					// Move ball
+					game_state.ball_position_prev = game_state.ball_position;
 					auto game_state_cache = game_state;
 					auto position_change = game_state.ball_direction * delta_time;
 					game_state.ball_position += game_state.ball_direction * delta_time;
@@ -215,12 +228,18 @@ namespace TerminalMinigames
 
 					// Check & handle border collision
 					auto collision_type = IntersectsBorder(game_state.ball_position);
-					HandleBorderCollision(game_state, collision_type);
+					HandleCollision(game_state, collision_type, true);
 
+					// Check & handle paddle collision
 					if (IntersectsPaddle(game_state))
 					{
 						HandlePaddleCollision(game_state);
 					}
+
+					// Check & handle block collision
+					CheckAndHandleBlockCollision(game_state);
+
+					ball_mutex.unlock();
 
 					screen.PostEvent(ftxui::Event::Custom);
 				}
@@ -231,88 +250,73 @@ namespace TerminalMinigames
 			update_ball.join();
 		}
 
-		BorderCollisions BlockBreaker::IntersectsBorder(Vector2D::Vector2D& pos)
+		CollisionTypes BlockBreaker::IntersectsBorder(Vector2D::Vector2D& pos)
 		{
 			if (pos.x < 2 && pos.y < block_breaker_config.board_dimension_y - 3 && pos.y >= 1)
 			{
-				return BorderCollisions::Left;
+				return CollisionTypes::Left;
 			}
 			else if (pos.x < 2 && pos.y < 1)
 			{
-				return BorderCollisions::TopLeft;
+				return CollisionTypes::TopLeft;
 			}
 			else if (pos.x < 2 && pos.y > block_breaker_config.board_dimension_y - 3)
 			{
-				return BorderCollisions::BottomLeft;
+				return CollisionTypes::BottomLeft;
 			}
 			else if (pos.x > block_breaker_config.board_dimension_x - 3 && pos.y < block_breaker_config.board_dimension_y - 3 && pos.y >= 1)
 			{
-				return BorderCollisions::Right;
+				return CollisionTypes::Right;
 			}
 			else if (pos.x > block_breaker_config.board_dimension_x - 3 && pos.y < 1)
 			{
-				return BorderCollisions::TopRight;
+				return CollisionTypes::TopRight;
 			}
 			else if (pos.x > block_breaker_config.board_dimension_x - 3 && pos.y > block_breaker_config.board_dimension_y - 3)
 			{
-				return BorderCollisions::BottomRight;
+				return CollisionTypes::BottomRight;
 			}
 			else if (pos.y > block_breaker_config.board_dimension_y - 3)
 			{
-				return BorderCollisions::Bottom;
+				return CollisionTypes::Bottom;
 			}
 			else if (pos.y < 3)
 			{
-				return BorderCollisions::Top;
+				return CollisionTypes::Top;
 			}
 
-			return BorderCollisions::None;
+			return CollisionTypes::None;
 		}
 
 
-		void BlockBreaker::HandleBorderCollision(BlockBreakerGameState& game_state, BorderCollisions collision_type)
+		void BlockBreaker::HandleCollision(BlockBreakerGameState& game_state, CollisionTypes collision_type, bool collided_border)
 		{
 			switch (collision_type)
 			{
-			case BorderCollisions::Left:
-				if (game_state.ball_direction.y > 0) // down movement
-				{
-					game_state.ball_direction = RotateBy90DegreesCounterClockwise(game_state.ball_direction);
-				}
-				else // up movement
-				{
-					game_state.ball_direction = RotateBy90DegreesClockwise(game_state.ball_direction);
-				}
+			case CollisionTypes::Left:
+					game_state.ball_direction = Vector2D::Vector2D(-game_state.ball_direction.x, game_state.ball_direction.y);
 				break;
-			case BorderCollisions::TopLeft:
-			case BorderCollisions::Top:
-			case BorderCollisions::TopRight:
-				// FIXME: Broken
-				if (game_state.ball_direction.x > 0)
+			case CollisionTypes::TopLeft:
+			case CollisionTypes::Top:
+			case CollisionTypes::TopRight:
+				game_state.ball_direction = Vector2D::Vector2D(game_state.ball_direction.x, -game_state.ball_direction.y);
+				break;
+			case CollisionTypes::Right:
+				game_state.ball_direction = Vector2D::Vector2D(-game_state.ball_direction.x, game_state.ball_direction.y);
+				break;
+			case CollisionTypes::BottomRight:
+			case CollisionTypes::Bottom:
+			case CollisionTypes::BottomLeft:
+				if (collided_border)
 				{
-					game_state.ball_direction = RotateBy90DegreesClockwise(game_state.ball_direction);
+					game_state.lost = true;
 				}
 				else
 				{
-					game_state.ball_direction = RotateBy90DegreesCounterClockwise(game_state.ball_direction);
+					game_state.ball_direction = Vector2D::Vector2D(game_state.ball_direction.x, -game_state.ball_direction.y);
 				}
 				break;
-			case BorderCollisions::Right:
-				if (game_state.ball_direction.y > 0) // down movement
-				{
-					game_state.ball_direction = RotateBy90DegreesClockwise(game_state.ball_direction);
-				}
-				else // up movement
-				{
-					game_state.ball_direction = RotateBy90DegreesCounterClockwise(game_state.ball_direction);
-				}
-				break;
-			case BorderCollisions::BottomRight:
-			case BorderCollisions::Bottom:
-			case BorderCollisions::BottomLeft:
-				game_state.lost = true;
-				break;
-			case BorderCollisions::None:
+			case CollisionTypes::None:
 				break;
 			default:
 				break;
@@ -349,18 +353,88 @@ namespace TerminalMinigames
 			auto ball_direction_new = Vector2D::Vector2D(cos(theta_new), sin(theta_new)) * game_state.ball_direction.x
 				+ Vector2D::Vector2D(sin(theta_new), cos(theta_new)) * game_state.ball_direction.y;
 
-			game_state.ball_direction = ball_direction_new;
+			game_state.ball_direction = Vector2D::Normalize(ball_direction_new) * block_breaker_config.ball_speed;
 		}
 
-		Vector2D::Vector2D RotateBy90DegreesClockwise(Vector2D::Vector2D direction)
+		CollisionTypes CheckAndHandleBlockCollision(BlockBreakerGameState& game_state)
 		{
-			return { -direction.y, direction.x };
+			CollisionTypes collision_type = CollisionTypes::None;
+			std::unordered_set<Block, boost::hash<Block>> block_positions_new = game_state.block_positions;
+
+			for (auto& b : game_state.block_positions)
+			{
+				collision_type = TestBlockOverlap(b, game_state.ball_position);
+				if (collision_type != CollisionTypes::None)
+				{
+					last_collision = collision_type;
+					block_positions_new.erase(b);
+					break;
+				}
+			}
+
+			if (collision_type != CollisionTypes::None)
+			{
+				game_state.block_positions = block_positions_new;
+
+				if (game_state.block_positions.size() == 0)
+				{
+					game_state.won = true;
+				}
+
+				HandleCollision(game_state, collision_type, false);
+			}
+
+			return collision_type;
 		}
 
-		Vector2D::Vector2D RotateBy90DegreesCounterClockwise(Vector2D::Vector2D direction)
+		CollisionTypes TestBlockOverlap(Block b, Vector2D::Vector2D v)
 		{
-			return { direction.y, -direction.x };
+			double d1x = b.end_left.x - v.x;
+			double d1y = b.end_left.y - v.y;
+			double d2x = v.x - b.end_right.x;
+			double d2y = v.y - b.end_right.y;
 
+			if (d1x > 0.0f || d1y > 0.0f) // compare to top left corner of block
+			{
+				return CollisionTypes::None;
+			}
+
+			if (d2x > 0.0f || d2y > 0.0f) // compare to bottom right corner of block
+			{
+				return CollisionTypes::None;
+			}
+
+			// Check bottom border:
+			auto p1 = Vector2D::Vector2D(b.end_left.x, b.end_right.y);
+			auto p2 = Vector2D::Vector2D(b.end_right.x, b.end_right.y);
+			if (LineSegmentsIntersect(p1, p2, game_state.ball_position_prev, game_state.ball_position))
+			{
+				return CollisionTypes::Top; // from ball's view collision is top (like with top border)
+			}
+
+			// Check top border:
+			p1 = Vector2D::Vector2D(b.end_left.x, b.end_left.y);
+			p2 = Vector2D::Vector2D(b.end_right.x, b.end_left.y);
+			if (LineSegmentsIntersect(p1, p2, game_state.ball_position_prev, game_state.ball_position))
+			{
+				return CollisionTypes::Bottom;
+			}
+
+			// Check left border:
+			p1 = Vector2D::Vector2D(b.end_left.x, b.end_left.y);
+			p2 = Vector2D::Vector2D(b.end_left.x, b.end_right.y);
+			if (LineSegmentsIntersect(p1, p2, game_state.ball_position_prev, game_state.ball_position))
+			{
+				return CollisionTypes::Right;
+			}
+
+			// Check right border:
+			p1 = Vector2D::Vector2D(b.end_right.x, b.end_left.y);
+			p2 = Vector2D::Vector2D(b.end_right.x, b.end_right.y);
+			if (LineSegmentsIntersect(p1, p2, game_state.ball_position_prev, game_state.ball_position))
+			{
+				return CollisionTypes::Left;
+			}
 		}
 
 	} // namespace BlockBreaker

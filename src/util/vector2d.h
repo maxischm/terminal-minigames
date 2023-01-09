@@ -114,4 +114,24 @@ namespace Vector2D
 	{
 		return v.x == w.x && v.y == w.y;
 	};
+
+	/**
+	 * Rotates the given direction vector clockwise by 90 degrees as seen on the canvas.
+	 * Due to the canvas's (0, 0) being in the top left, this function rotates the given
+	 * direction as it is seen by the player.
+	 *
+	 * @param direction The direction vector to rotate.
+	 * @returns Rotated direction vector.
+	 */
+	Vector2D RotateBy90DegreesClockwise(Vector2D direction);
+
+	/**
+	 * Rotates the given direction vector counter-clockwise by 90 degrees as seen on the canvas.
+	 * Due to the canvas's (0, 0) being in the top left, this function rotates the given
+	 * direction as it is seen by the player.
+	 *
+	 * @param direction The direction vector to rotate.
+	 * @returns Rotated direction vector.
+	 */
+	Vector2D RotateBy90DegreesCounterClockwise(Vector2D direction);
 }

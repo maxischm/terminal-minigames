@@ -11,8 +11,6 @@ namespace TerminalMinigames
 {
 	namespace BlockBreaker
 	{
-		
-
 		struct Block
 		{
 			Vector2D::Vector2D end_left;
@@ -37,12 +35,15 @@ namespace TerminalMinigames
 
 				return seed;
 			}
+
+			void Draw(ftxui::Canvas& canvas);
 		};
 
 		struct BlockBreakerGameState
 		{
 			Vector2D::Vector2D paddle_position;
 			Vector2D::Vector2D ball_position;
+			Vector2D::Vector2D ball_position_prev;
 			Vector2D::Vector2D ball_direction;
 
 			int score = 0;
@@ -52,13 +53,14 @@ namespace TerminalMinigames
 			InputDirection last_input = InputDirection::None;
 
 			bool lost = false;
+			bool won = false;
 
-			void Reset(BlockBreakerGameState& game_state);
+			void Reset();
 		};
 
 		void ExecuteBlockBreaker(QuitFunction quit_function, bool* back_to_menu);
 
-		enum class BorderCollisions
+		enum class CollisionTypes
 		{
 			Left,
 			TopLeft,
@@ -71,24 +73,24 @@ namespace TerminalMinigames
 			None
 		};
 
-		inline const std::string ToString(BorderCollisions c)
+		inline const std::string ToString(CollisionTypes c)
 		{
 			switch (c)
 			{
-			case BorderCollisions::Left:		return "Left";
-			case BorderCollisions::TopLeft:		return "Top Left";
-			case BorderCollisions::TopRight:	return "Top Right";
-			case BorderCollisions::Right:		return "Right";
-			case BorderCollisions::BottomLeft:	return "Bottom Left";
-			case BorderCollisions::BottomRight: return "Bottom Right";
-			case BorderCollisions::Top:			return "Top";
-			case BorderCollisions::Bottom:		return "Bottom";
-			case BorderCollisions::None:		return "None";
+			case CollisionTypes::Left:			return "Left";
+			case CollisionTypes::TopLeft:		return "Top Left";
+			case CollisionTypes::TopRight:		return "Top Right";
+			case CollisionTypes::Right:			return "Right";
+			case CollisionTypes::BottomLeft:	return "Bottom Left";
+			case CollisionTypes::BottomRight:	return "Bottom Right";
+			case CollisionTypes::Top:			return "Top";
+			case CollisionTypes::Bottom:		return "Bottom";
+			case CollisionTypes::None:			return "None";
 			}
 		}
 
-		BorderCollisions IntersectsBorder(Vector2D::Vector2D& pos);
-		void HandleBorderCollision(BlockBreakerGameState& game_state, BorderCollisions collision_type);
+		CollisionTypes IntersectsBorder(Vector2D::Vector2D& pos);
+		void HandleCollision(BlockBreakerGameState& game_state, CollisionTypes collision_type, bool collided_border);
 
 		/**
 		 * Checks whether the ball collides with the paddle controlled by the player.
@@ -100,24 +102,8 @@ namespace TerminalMinigames
 
 		void HandlePaddleCollision(BlockBreakerGameState& game_state);
 
-		/**
-		 * Rotates the given direction vector clockwise by 90 degrees as seen on the canvas.
-		 * Due to the canvas's (0, 0) being in the top left, this function rotates the given
-		 * direction as it is seen by the player.
-		 * 
-		 * @param direction The direction vector to rotate.
-		 * @returns Rotated direction vector.
-		 */
-		Vector2D::Vector2D RotateBy90DegreesClockwise(Vector2D::Vector2D direction);
+		CollisionTypes CheckAndHandleBlockCollision(BlockBreakerGameState& game_state);
 
-		/**
-		 * Rotates the given direction vector counter-clockwise by 90 degrees as seen on the canvas.
-		 * Due to the canvas's (0, 0) being in the top left, this function rotates the given
-		 * direction as it is seen by the player.
-		 * 
-		 * @param direction The direction vector to rotate.
-		 * @returns Rotated direction vector.
-		 */
-		Vector2D::Vector2D RotateBy90DegreesCounterClockwise(Vector2D::Vector2D direction);
+		CollisionTypes TestBlockOverlap(Block b, Vector2D::Vector2D v);
 	} // namespace BlockBreaker
 } // namespace TerminalMinigames

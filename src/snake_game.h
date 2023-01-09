@@ -201,10 +201,7 @@ namespace TerminalMinigames
          * Main function for the snake game.
          * @param quit_function Function executed when the player presses the back to menu button.
          * @param back_to_menu Flag whether the player wants to go back to the menu. Required by the main menu.
-         */
-        //void ExecuteSnake(Functor quit_function, bool* back_to_menu);
-        /*template <typename T>*/
-        
+         */        
         void ExecuteSnake(QuitFunction quit_function, bool* back_to_menu);
     } // namespace Snake
 } // namespace TerminalMinigames
