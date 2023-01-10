@@ -207,7 +207,6 @@ namespace TerminalMinigames
 
 			auto screen_view_renderer = ftxui::Renderer(container, [&] {
 				auto ball_position_text = std::format("Ball Position: {}", game_state.ball_position.ToString());
-				auto collision_text = std::format("Collision: {}", ToString(last_collision));
 				auto speed_text = std::format("Speed: {}", Vector2D::Magnitude(game_state.ball_direction));
 
 				return ftxui::vbox({
@@ -222,7 +221,6 @@ namespace TerminalMinigames
 						})
 					}),
 					ftxui::text(ball_position_text),
-					ftxui::text(collision_text),
 					ftxui::text(speed_text)
 					});
 			});

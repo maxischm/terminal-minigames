@@ -37,7 +37,8 @@ namespace TerminalMinigames
     /**
      * List of descriptions for the list of available games.
      */
-    std::vector<std::string> game_descriptions = { "Snake is a sub-genre of action video games where the player maneuvers the end of a growing line, often themed as a snake. The player must keep the snake from colliding with both other obstacles and itself, which gets harder as the snake lengthens. - Wikipedia", "DEMO TEXT FOR BLOCK BREAKER" };
+    std::vector<std::string> game_descriptions = { "Snake is a sub-genre of action video games where the player maneuvers the end of a growing line, often themed as a snake. The player must keep the snake from colliding with both other obstacles and itself, which gets harder as the snake lengthens. - Wikipedia",
+    "In Block Breaker, you control a board at the bottom of the screen and must bounce the ball to destroy the blocks at the top of the screen with it. Note that the movement of the ball and collisions are restricted to the terminal window's characters so collisions might look like they might have to happen but they don't."};
 
     /**
      * Quit function to use to return to the main menu.
