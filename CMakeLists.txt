@@ -33,7 +33,16 @@ if(NOT ftxui_POPULATED)
   add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
-# FetchContent_MakeAvailable(ftxui)
+### Boost ###
+set(BOOST_INCLUDE_LIBRARIES math filesystem system program_options chrono)
+set(BOOST_ENABLE_CMAKE ON)
+FetchContent_Declare(
+  Boost
+  GIT_REPOSITORY https://github.com/boostorg/boost.git
+  GIT_TAG boost-1.80.0
+)
+FetchContent_MakeAvailable(Boost)
+###       ###
 
 FetchContent_MakeAvailable(_project_options)
 include(${_project_options_SOURCE_DIR}/Index.cmake)
@@ -49,7 +58,12 @@ add_library(terminalMinigamesLib STATIC
     "src/main_menu.h" 
     "src/snake_game.cpp" 
     "src/snake_game.h"
-)
+    "src/block_breaker.cpp"
+    "src/block_breaker.h"
+    "src/util/util.cpp"
+    "src/util/util.h"
+    "src/util/vector2d.h"
+    "src/util/vector2d.cpp")
 target_include_directories(terminalMinigamesLib 
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
@@ -59,11 +73,20 @@ target_link_system_libraries(terminalMinigamesLib
     PUBLIC ftxui::dom 
     PUBLIC ftxui::screen 
     PUBLIC ftxui::component 
+    PUBLIC Boost::container_hash
+    PUBLIC Boost::chrono
 )
+
+### Boost ###
+#target_link_libraries(
+#    terminalMinigamesLib
+#    
+#)
+###       ###
 
 include(${_project_options_SOURCE_DIR}/src/DynamicProjectOptions.cmake)
 
-add_executable(TerminalMinigames src/main.cpp)
+add_executable(TerminalMinigames src/main.cpp "src/util/vector2d.cpp")
 target_link_system_libraries(TerminalMinigames PRIVATE terminalMinigamesLib)
 
 
