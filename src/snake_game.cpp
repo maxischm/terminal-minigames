@@ -1,4 +1,4 @@
-﻿#include <format>
+#include <format>
 #include <thread>
 #include <mutex>
 #include <deque>
