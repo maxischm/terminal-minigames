@@ -267,6 +267,7 @@ namespace TerminalMinigames
 				{
 					update_ball = std::thread(UpdateBall, std::ref(screen), std::ref(game_state), back_to_menu);
 					restart_flag = false;
+					screen.PostEvent(ftxui::Event::Custom);
 				}
 				if (update_ball.joinable())
 				{
