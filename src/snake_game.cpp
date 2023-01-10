@@ -398,6 +398,7 @@ namespace TerminalMinigames
                 {
                     update_snake = std::thread(Update, std::ref(screen), std::ref(game_state), back_to_menu);
                     restart_flag = false;
+                    screen.PostEvent(ftxui::Event::Custom);
                 }
                 if (update_snake.joinable())
                 {
