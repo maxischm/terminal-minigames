@@ -1,243 +1,249 @@
 #pragma once
 
+#include <unordered_set>
+#include <random>
+
+#include "util/util.h"
+
 namespace TerminalMinigames
 {
-    /**
-     * String vector containing the different lines to print "Game Over" to the screen.
-     */
-    const std::vector<std::string> game_over_string = { 
-        "  _____                        ____",
-        " / ____|                      / __ \\",
-        "| |  __  __ _ _ __ ___   ___ | |  | |_   _____ _ __",
-        "| | |_ |/ _` | '_ ` _ \\ / _ \\| |  | \\ \\ / / _ \\ '__|",
-        "| |__| | (_| | | | | | |  __/| |__| |\\ V / __/ |",
-        " \\_____|\\__,_|_| |_| |_|\\___| \\____/  \\_/\\___|_|" };
-
-    /**
-     * Enum listing all available input directions.
-     */
-    enum class InputDirection
+    namespace Snake
     {
-        Left,
-        Right,
-        Up,
-        Down,
-        None
-    };
-
-    /**
-     * Enum listing all the avilable movement directions for the snake.
-     */
-    enum class MovementDirection
-    {
-        Left,
-        Right,
-        Up,
-        Down
-    };
-
-    /**
-     * Creates a bigger representation of a coordinate of the snake by wrapping it in a 2x1 container.
-     * Required to prevent visualization by a block with questionmark. Looks nicer this way.
-     */
-    struct Pixel
-    {
-        std::tuple<int, int> x1_y1;
-        std::tuple<int, int> x2_y1;
-
-        std::tuple<int, int> x3_y1;
-        std::tuple<int, int> x4_y1;
-
-        std::tuple<int, int> x1_y2;
-        std::tuple<int, int> x2_y2;
-
-        std::tuple<int, int> x3_y2;
-        std::tuple<int, int> x4_y2;
-
-        std::tuple<float, int> center; // min: (2,2); max: (97,47)
-
-        Pixel(std::tuple<float, int> center);
-        Pixel(float center_x, int center_y);
-
-        void SetCenter(std::tuple<float, int> new_center);
-        void SetCenter(float new_center_x, int new_center_y);
+        /**
+         * Enum listing all the avilable movement directions for the snake.
+         */
+        enum class MovementDirection
+        {
+            Left,
+            Right,
+            Up,
+            Down
+        };
 
         /**
-         * Prints the pixel to the given canvas in the given color by printing the individual points as blocks.
+         * Creates a bigger representation of a coordinate of the snake by wrapping it in a 2x1 container.
+         * Required to prevent visualization by a block with questionmark. Looks nicer this way.
          */
-        void DrawPixel(ftxui::Canvas* canvas, ftxui::Color color);
-
-        /**
-         * Allows comparison with other pixels whether they point to the same coordinates (center).
-         * @param other_pixel Pixel to compare to.
-         */
-        bool operator()(const Pixel& other_pixel) const
+        struct Pixel
         {
-            return std::floor(std::get<0>(center)) == std::floor(std::get<0>(other_pixel.center)) && std::get<1>(center) == std::get<1>(other_pixel.center);
-        }
+            std::tuple<int, int> x1_y1;
+            std::tuple<int, int> x2_y1;
 
-        bool operator==(const Pixel& other_pixel) const
-        {
-            return std::floor(std::get<0>(center)) == std::floor(std::get<0>(other_pixel.center)) && std::get<1>(center) == std::get<1>(other_pixel.center);
-        }
+            std::tuple<int, int> x3_y1;
+            std::tuple<int, int> x4_y1;
 
-        struct HashFunction
-        {
-            size_t operator()(const Pixel& pixel) const
+            std::tuple<int, int> x1_y2;
+            std::tuple<int, int> x2_y2;
+
+            std::tuple<int, int> x3_y2;
+            std::tuple<int, int> x4_y2;
+
+            std::tuple<float, int> center; // min: (2,2); max: (97,47)
+
+            Pixel(std::tuple<float, int> center);
+            Pixel(float center_x, int center_y);
+
+            void SetCenter(std::tuple<float, int> new_center);
+            void SetCenter(float new_center_x, int new_center_y);
+
+            /**
+             * Prints the pixel to the given canvas in the given color by printing the individual points as blocks.
+             * 
+             * @param canvas Canvas pointer to print to.
+             * @param color Color to print the pixel in.
+             */
+            void DrawPixel(ftxui::Canvas* canvas, ftxui::Color color);
+
+            /**
+             * Allows comparison with other pixels whether they point to the same coordinates (center).
+             * @param other_pixel Pixel to compare to.
+             */
+            bool operator()(const Pixel& other_pixel) const
             {
-                size_t x_hash = std::hash<int>()(std::floor(std::get<0>(pixel.center)));
-                size_t y_hash = std::hash<int>()(std::get<1>(pixel.center));
-                return x_hash ^ y_hash;
+                return std::floor(std::get<0>(center)) == std::floor(std::get<0>(other_pixel.center)) && std::get<1>(center) == std::get<1>(other_pixel.center);
+            }
+
+            bool operator==(const Pixel& other_pixel) const
+            {
+                return std::floor(std::get<0>(center)) == std::floor(std::get<0>(other_pixel.center)) && std::get<1>(center) == std::get<1>(other_pixel.center);
+            }
+
+            struct HashFunction
+            {
+                size_t operator()(const Pixel& pixel) const
+                {
+                    size_t x_hash = std::hash<int>()(std::floor(std::get<0>(pixel.center)));
+                    size_t y_hash = std::hash<int>()(std::get<1>(pixel.center));
+                    return x_hash ^ y_hash;
+                }
+            };
+        };
+
+        /**
+         * Struct containing all the information required for maintaining the current state of the game.
+         */
+        struct SnakeGameState
+        {
+            /**
+             * Flag whether the player died or not.
+             */
+            bool isDead = false;
+            /**
+             * Length of the snake.
+             */
+            int snake_length = 4;
+            /**
+             * Double-ended queue containing the snake's positions in form of TerminalMinigames::Pixel instances.
+             */
+            std::deque<Pixel> snake_position_queue = {
+                    Pixel(47.5f, 25),
+                    Pixel(51.5f, 25),
+                    Pixel(55.5f, 25),
+                    Pixel(59.5f, 25) };
+            /**
+             * Last input caught.
+             */
+            std::atomic<InputDirection> last_input = InputDirection::None ;
+            /**
+             * Current movement direction of the snake.
+             */
+            std::atomic<MovementDirection> current_movement_direction = MovementDirection::Left;
+            /**
+             * Set containing the positions of the food for the snake.
+             */
+            std::unordered_set<Pixel, Pixel::HashFunction> food_positions = {};
+        
+            /**
+             * Resets the game state to start a fresh game.
+             */
+            void Reset()
+            {
+                isDead = false;
+                snake_length = 4;
+                snake_position_queue = {
+                    Pixel(47.5f, 25),
+                    Pixel(51.5f, 25),
+                    Pixel(55.5f, 25),
+                    Pixel(59.5f, 25) };
+                last_input = InputDirection::None;
+                current_movement_direction = MovementDirection::Left;
+                food_positions.clear();
             }
         };
-    };
 
-    /**
-     * Struct containing all the information required for maintaining the current state of the game.
-     */
-    struct SnakeGameState
-    {
         /**
-         * Flag whether the player died or not.
+         * Structure defining the configuration of the Snake game.
          */
-        bool isDead = false;
+        struct SnakeConfig
+        {
+            /**
+             * Size of the step to move a TerminalMinigames::Pixel's center point to move it on the canvas.
+             */
+            int movement_offset = 4;
+
+            /**
+             * Width of the canvas.
+             */
+            int board_dimension_x = 200;
+            /**
+             * Height of the canvas.
+             */
+            int board_dimension_y = 100;
+            /**
+             * Min position on the x-axis to put a pixel's center.
+             */
+            const int min_x_dimension = 3;
+            /**
+             * Min position on the y-axis to put a pixel's center.
+             */
+            const int min_y_dimension = 3;
+            /**
+             * Max position on the x-axis to put a pixel's center.
+             */
+            const int max_x_dimension = 196;
+            /**
+             * Max position on the y-axis to put a pixel's center.
+             */
+            const int max_y_dimension = 96;
+
+            /**
+             * Max factor to multiply the movement_offset by to position the food on the x-axis of the canvas.
+             */
+            const int food_x_offset_max_factor = 48;
+            /**
+             * Min factor to multiply the movement_offset by to position the food on the x-axis of the canvas.
+             */
+            const int food_x_offset_min_factor = 1;
+            /**
+             * Max factor to multiply the movement_offset by to position the food on the y-axis of the canvas.
+             */
+            const int food_y_offset_max_factor = 22;
+            /**
+             * Min factor to multiply the movement_offset by to position the food on the y-axis of the canvas.
+             */
+            const int food_y_offset_min_factor = 1;
+        };
+
         /**
-         * Length of the snake.
+         * Spawns food by putting it in the passed game state's food position set.
+         * The newly added food position is then drawn on the next draw call of the canvas.
+         * 
+         * @param current_game_state Current game state to add to its food positions.
          */
-        int snake_length = 4;
+        void SpawnFood(SnakeGameState* current_game_state);
+
         /**
-         * Double-ended queue containing the snake's positions in form of TerminalMinigames::Pixel instances.
+         * Handles movement when an input was received.
+         * 
+         * @param new_head_pos New head position pixel.
+         * @param current_game_state Pointer to current game state.
+         * @param new_direction Direction to move the snake to.
+         * @param x_offset Offset to move the pixel along the x-axis by.
+         * @param y_offset Offset to move the pixel along the y-axis by.
          */
-        std::deque<Pixel> snake_position_queue = {
-                Pixel(47.5f, 25),
-                Pixel(51.5f, 25),
-                Pixel(55.5f, 25),
-                Pixel(59.5f, 25) };
+        void HandleInput(Pixel* new_head_pos, SnakeGameState* current_game_state, MovementDirection new_direction, int x_offset, int y_offset);
         /**
-         * Last input caught.
+         * Handles snake movement when the movement direction is either left or right.
+         * 
+         * @param new_head_pos Pointer to new head position.
+         * @param current_game_state Pointer to current game state.
+         * @param moves_left Whether to move left (or right).
          */
-        std::atomic<InputDirection> last_input = InputDirection::None ;
-        /**
-         * Current movement direction of the snake.
-         */
-        std::atomic<MovementDirection> current_movement_direction = MovementDirection::Left;
-        /**
-         * Set containing the positions of the food for the snake.
-         */
-        std::unordered_set<Pixel, Pixel::HashFunction> food_positions = {};
+        void HandleLeftRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_left);
         
         /**
-         * Resets the game state to start a fresh game.
+         * Handles snake movement when the movement direction is either up or down.
+         * 
+         * @param new_head_pos Poniter to new head position.
+         * @param current_game_state Pointer to current game state.
+         * @param moves_up Whether to move up (or down).
          */
-        void Reset()
-        {
-            isDead = false;
-            snake_length = 4;
-            snake_position_queue = {
-                Pixel(47.5f, 25),
-                Pixel(51.5f, 25),
-                Pixel(55.5f, 25),
-                Pixel(59.5f, 25) };
-            last_input = InputDirection::None;
-            current_movement_direction = MovementDirection::Left;
-            food_positions.clear();
-        }
-    };
+        void HandleUpDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_up);
+    
+        /**
+         * Main function for the snake game.
+         * @param quit_function Function executed when the player presses the back to menu button.
+         * @param back_to_menu Flag whether the player wants to go back to the menu. Required by the main menu.
+         */        
+        void ExecuteSnake(QuitFunction quit_function, bool* back_to_menu);
 
-    /**
-     * Instance of the game state struct.
-     */
-    SnakeGameState game_state;
-    /**
-     * Mutex for accessing the snake positions queue.
-     */
-    std::mutex snake_positions_mutex;
-    /**
-     * Mutex for accessing the food positions set.
-     */
-    std::mutex food_positions_mutex;
+        /**
+         * Update function for the snake game.
+         * 
+         * @param screen Reference to screen to post events to.
+         * @param state Reference to current game state.
+         * @param back_flag Whether to return to the menu or not.
+         */
+        void Update(ftxui::ScreenInteractive& screen, SnakeGameState& state, bool* back_flag);
 
-    /**
-     * Size of the step to move a TerminalMinigames::Pixel's center point to move it on the canvas.
-     */
-    int movement_offset = 4;
+        /**
+         * Triggers the screen's loop function with the given component.
+         * Use in an individual thread.
+         * 
+         * @param screen Screen reference to loop.
+         * @param comp Component to loop on the screen.
+         */
+        void UpdateScreen(ftxui::ScreenInteractive& screen, ftxui::Component& comp);
 
-    /**
-     * Width of the canvas.
-     */
-    int board_dimension_x = 200;
-    /**
-     * Height of the canvas.
-     */
-    int board_dimension_y = 100;
-    /**
-     * Min position on the x-axis to put a pixel's center.
-     */
-    const int min_x_dimension = 3;
-    /**
-     * Min position on the y-axis to put a pixel's center.
-     */
-    const int min_y_dimension = 3;
-    /**
-     * Max position on the x-axis to put a pixel's center.
-     */
-    const int max_x_dimension = 196;
-    /**
-     * Max position on the y-axis to put a pixel's center.
-     */
-    const int max_y_dimension = 96;
-
-    /**
-     * Max factor to multiply the movement_offset by to position the food on the x-axis of the canvas.
-     */
-    const int food_x_offset_max_factor = 48;
-    /**
-     * Min factor to multiply the movement_offset by to position the food on the x-axis of the canvas.
-     */
-    const int food_x_offset_min_factor = 1;
-    /**
-     * Max factor to multiply the movement_offset by to position the food on the y-axis of the canvas.
-     */
-    const int food_y_offset_max_factor = 22;
-    /**
-     * Min factor to multiply the movement_offset by to position the food on the y-axis of the canvas.
-     */
-    const int food_y_offset_min_factor = 1;
-
-    std::random_device random_device;
-    std::mt19937 generator(random_device());
-    std::uniform_int_distribution<> uniform_distribution_x(food_x_offset_min_factor, food_x_offset_max_factor);
-    std::uniform_int_distribution<> uniform_distribution_y(food_y_offset_min_factor, food_y_offset_max_factor);
-
-    /**
-     * Spawns food by putting it in the passed game state's food position set.
-     * The newly added food position is then drawn on the next draw call of the canvas.
-     */
-    void SpawnFood(SnakeGameState* current_game_state);
-
-    /**
-     * Handles movement when an input was received.
-     */
-    void HandleInput(Pixel* new_head_pos, SnakeGameState* current_game_state, MovementDirection new_direction, int x_offset, int y_offset);
-    /**
-     * Handles snake movement when the movement direction is either left or right.
-     */
-    void HandleLeftRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_left);
-    /**
-     * Handles snake movement when the movement direction is either up or down.
-     */
-    void HandleUpDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_up);
-
-    /**
-     * Main function for the snake game.
-     * @param quit_function Function executed when the player presses the back to menu button.
-     * @param back_to_menu Flag whether the player wants to go back to the menu. Required by the main menu.
-     */
-    template<typename Functor>
-    void ExecuteSnake(Functor quit_function, bool* back_to_menu);
-
-    /**
-     * Prints the game over text to the given canvas.
-     */
-    void PrintGameOverToCanvas(ftxui::Canvas* canvas);
-}
+    } // namespace Snake
+} // namespace TerminalMinigames
