@@ -1,6 +1,9 @@
 #pragma once
 
+#define _USE_MATH_DEFINES
+
 #include <functional>
+#include <numbers>
 
 #include "ftxui/dom/canvas.hpp"
 
@@ -50,4 +53,12 @@ namespace TerminalMinigames
      * From https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
      */
     bool LineSegmentsIntersect(Vector2D::Vector2D p1, Vector2D::Vector2D q1, Vector2D::Vector2D p2, Vector2D::Vector2D q2);
+
+    /**
+     * Convert degrees to radians.
+     * From https://stackoverflow.com/a/31525208
+     */
+    static double DegreesToRadians(double d) {
+        return (d / 180.0) * (std::numbers::pi);
+    }
 }

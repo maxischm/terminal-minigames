@@ -203,5 +203,9 @@ namespace TerminalMinigames
          * @param back_to_menu Flag whether the player wants to go back to the menu. Required by the main menu.
          */        
         void ExecuteSnake(QuitFunction quit_function, bool* back_to_menu);
+
+        void Update(ftxui::ScreenInteractive& screen, SnakeGameState& state, bool* back_flag);
+        void UpdateScreen(ftxui::ScreenInteractive& screen, ftxui::Component& comp);
+
     } // namespace Snake
 } // namespace TerminalMinigames

@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "boost/container_hash/hash.hpp"
+#include "ftxui/component/screen_interactive.hpp"
 
 #include "util/util.h"
 #include "util/vector2d.h"
@@ -45,8 +46,7 @@ namespace TerminalMinigames
 			Vector2D::Vector2D ball_position;
 			Vector2D::Vector2D ball_position_prev;
 			Vector2D::Vector2D ball_direction;
-
-			int score = 0;
+			float ball_speed = 10.f;
 
 			std::unordered_set<Block, boost::hash<Block>> block_positions;
 
@@ -59,6 +59,9 @@ namespace TerminalMinigames
 		};
 
 		void ExecuteBlockBreaker(QuitFunction quit_function, bool* back_to_menu);
+
+		void UpdateBall(ftxui::ScreenInteractive& screen, BlockBreakerGameState& state, bool* back_flag);
+		void UpdateScreen(ftxui::ScreenInteractive& screen, ftxui::Component& comp);
 
 		enum class CollisionTypes
 		{
@@ -89,7 +92,7 @@ namespace TerminalMinigames
 			}
 		}
 
-		CollisionTypes IntersectsBorder(Vector2D::Vector2D& pos);
+		CollisionTypes IntersectsBorder(Vector2D::Vector2D& pos, float ball_radius);
 		void HandleCollision(BlockBreakerGameState& game_state, CollisionTypes collision_type, bool collided_border);
 
 		/**
@@ -98,12 +101,12 @@ namespace TerminalMinigames
 		 * @param game_state Current game state describing ball & paddle positions.
 		 * @returns Whether the ball intersects with the paddle.
 		 */
-		bool IntersectsPaddle(BlockBreakerGameState& game_state);
+		bool IntersectsPaddle(BlockBreakerGameState& game_state, float ball_radius);
 
 		void HandlePaddleCollision(BlockBreakerGameState& game_state);
 
-		CollisionTypes CheckAndHandleBlockCollision(BlockBreakerGameState& game_state);
+		CollisionTypes CheckAndHandleBlockCollision(BlockBreakerGameState& game_state, float ball_radius);
 
-		CollisionTypes TestBlockOverlap(Block b, Vector2D::Vector2D v);
+		CollisionTypes TestBlockOverlap(Block b, Vector2D::Vector2D v, float ball_radius);
 	} // namespace BlockBreaker
 } // namespace TerminalMinigames

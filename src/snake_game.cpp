@@ -30,6 +30,8 @@ namespace TerminalMinigames
          */
         std::mutex food_positions_mutex;
 
+        bool restart_flag;
+
         SnakeConfig  snake_config;
 
         std::random_device random_device;
@@ -180,6 +182,96 @@ namespace TerminalMinigames
             }
         }
 
+        void Update(ftxui::ScreenInteractive& screen, SnakeGameState& state, bool* back_flag)
+        {
+            int seconds_passed_since_last_food_spawn = 0;
+
+            food_positions_mutex.lock();
+            SpawnFood(&state);
+            food_positions_mutex.unlock();
+
+            while (!(*back_flag) && !state.isDead)
+                //while (!game_state.isDead)
+            {
+                // wait certain amount of time before updating position:
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(0.5s);
+
+                // Fetch required locks
+                snake_positions_mutex.lock();
+                food_positions_mutex.lock();
+
+                // handle input (if present) and move the snake
+                auto new_head_pos = state.snake_position_queue.front();
+
+                switch (state.current_movement_direction)
+                {
+                case MovementDirection::Left:
+                case MovementDirection::Right:
+                {
+                    HandleLeftRightMovement(&new_head_pos, &state, state.current_movement_direction == MovementDirection::Left);
+                    break;
+                }
+                case MovementDirection::Up:
+                case MovementDirection::Down:
+                {
+                    HandleUpDownMovement(&new_head_pos, &state, state.current_movement_direction == MovementDirection::Up);
+                    break;
+                }
+                }
+
+                // Check if new_head_pos is already contained in snake_position_queue or is out of bounds:
+                if (std::find_if(state.snake_position_queue.begin(), state.snake_position_queue.end(), Pixel(new_head_pos)) != state.snake_position_queue.end()
+                    || std::get<0>(new_head_pos.center) > snake_config.max_x_dimension
+                    || std::get<0>(new_head_pos.center) < snake_config.min_x_dimension
+                    || std::get<1>(new_head_pos.center) > snake_config.max_y_dimension
+                    || std::get<1>(new_head_pos.center) < snake_config.min_y_dimension)
+                {
+                    state.isDead = true;
+                    screen.PostEvent(ftxui::Event::Custom);
+                    snake_positions_mutex.unlock();
+                    food_positions_mutex.unlock();
+                    break;
+                }
+
+                state.snake_position_queue.push_front(new_head_pos);
+
+                // Check if new_head_pos is contained in food_positions => snake is eating
+                bool is_eating = state.food_positions.contains(new_head_pos);
+                if (is_eating)
+                {
+                    state.food_positions.erase(new_head_pos);
+                    SpawnFood(&state);
+                }
+                else
+                {
+                    state.snake_position_queue.pop_back();
+                }
+
+                if (seconds_passed_since_last_food_spawn > 20)
+                {
+                    SpawnFood(&state);
+                    seconds_passed_since_last_food_spawn = 0;
+                }
+                else
+                {
+                    seconds_passed_since_last_food_spawn++;
+                }
+
+                state.last_input = InputDirection::None;
+
+                food_positions_mutex.unlock();
+                snake_positions_mutex.unlock();
+
+                screen.PostEvent(ftxui::Event::Custom);
+            }
+        }
+
+        void UpdateScreen(ftxui::ScreenInteractive& screen, ftxui::Component& comp)
+        {
+            screen.Loop(comp);
+        }
+
         void ExecuteSnake(QuitFunction quit_function, bool* back_to_menu)
         {
             game_state.Reset();
@@ -248,11 +340,9 @@ namespace TerminalMinigames
 
             // Restart button
             std::string restart_button_label = "Restart";
-            auto restart_button = ftxui::Button(&restart_button_label, [&] { 
-                game_state.Reset(); 
-                food_positions_mutex.lock(); 
-                SpawnFood(&game_state); 
-                food_positions_mutex.unlock(); });
+            auto restart_button = ftxui::Button(&restart_button_label, [&] {
+                game_state.Reset();
+                restart_flag = true; });
             container->Add(restart_button);
 
             auto game_view_renderer = ftxui::Renderer(container, [&]
@@ -298,92 +388,24 @@ namespace TerminalMinigames
                 return false;
                 });
 
-            std::thread move_snake([&] {
-                int seconds_passed_since_last_food_spawn = 0;
-
-                food_positions_mutex.lock();
-                SpawnFood(&game_state);
-                food_positions_mutex.unlock();
-
-                while (!(*back_to_menu) && !game_state.isDead)
-                //while (!game_state.isDead)
+            std::thread update_screen(UpdateScreen, std::ref(screen), std::ref(game_view_event_catch_wrapper));
+            
+            std::thread update_snake;
+            restart_flag = true;
+            while (!(*back_to_menu))
+            {
+                if (restart_flag)
                 {
-                    // wait certain amount of time before updating position:
-                    using namespace std::chrono_literals;
-                    std::this_thread::sleep_for(0.5s);
-
-                    // Fetch required locks
-                    snake_positions_mutex.lock();
-                    food_positions_mutex.lock();
-
-                    // handle input (if present) and move the snake
-                    auto new_head_pos = game_state.snake_position_queue.front();
-
-                    switch (game_state.current_movement_direction)
-                    {
-                    case MovementDirection::Left:
-                    case MovementDirection::Right:
-                    {
-                        HandleLeftRightMovement(&new_head_pos, &game_state, game_state.current_movement_direction == MovementDirection::Left);
-                        break;
-                    }
-                    case MovementDirection::Up:
-                    case MovementDirection::Down:
-                    {
-                        HandleUpDownMovement(&new_head_pos, &game_state, game_state.current_movement_direction == MovementDirection::Up);
-                        break;
-                    }
-                    }
-
-                    // Check if new_head_pos is already contained in snake_position_queue or is out of bounds:
-                    if (std::find_if(game_state.snake_position_queue.begin(), game_state.snake_position_queue.end(), Pixel(new_head_pos)) != game_state.snake_position_queue.end()
-                        || std::get<0>(new_head_pos.center) > snake_config.max_x_dimension
-                        || std::get<0>(new_head_pos.center) < snake_config.min_x_dimension
-                        || std::get<1>(new_head_pos.center) > snake_config.max_y_dimension
-                        || std::get<1>(new_head_pos.center) < snake_config.min_y_dimension)
-                    {
-                        game_state.isDead = true;
-                        screen.PostEvent(ftxui::Event::Custom);
-                        snake_positions_mutex.unlock();
-                        food_positions_mutex.unlock();
-                        break;
-                    }
-
-                    game_state.snake_position_queue.push_front(new_head_pos);
-                
-                    // Check if new_head_pos is contained in food_positions => snake is eating
-                    bool is_eating = game_state.food_positions.contains(new_head_pos);
-                    if (is_eating)
-                    {
-                        game_state.food_positions.erase(new_head_pos);
-                        SpawnFood(&game_state);
-                    }
-                    else 
-                    {
-                        game_state.snake_position_queue.pop_back();
-                    }
-
-                    if (seconds_passed_since_last_food_spawn > 20)
-                    {
-                        SpawnFood(&game_state);
-                        seconds_passed_since_last_food_spawn = 0;
-                    }
-                    else
-                    {
-                        seconds_passed_since_last_food_spawn++;
-                    }
-
-                    game_state.last_input = InputDirection::None;
-
-                    food_positions_mutex.unlock();
-                    snake_positions_mutex.unlock();
-
-                    screen.PostEvent(ftxui::Event::Custom);
+                    update_snake = std::thread(Update, std::ref(screen), std::ref(game_state), back_to_menu);
+                    restart_flag = false;
                 }
-                });
-        
-            screen.Loop(game_view_event_catch_wrapper);
-            move_snake.join();
+                if (update_snake.joinable())
+                {
+                    update_snake.join();
+                }
+            }
+
+            update_screen.join();
         }
     } // namespace Snake
 } // namespace TerminalMinigames
