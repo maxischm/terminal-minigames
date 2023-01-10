@@ -28,6 +28,9 @@ namespace TerminalMinigames
 			canvas.DrawBlockLine(end_left.x, end_right.y, end_right.x, end_right.y);
 		}
 
+		/**
+		 * Struct containing all necessary settings/configurations for the block breaker game.
+		 */
 		struct BlockBreakerConfig
 		{
 			int board_dimension_x = 102;
@@ -41,6 +44,9 @@ namespace TerminalMinigames
 			float ball_speed_initial = 10.f;
 			float ball_radius = 0.5f;
 
+			/**
+			 * Factor by which the ball speed is multiplied by for each paddle contact.
+			 */
 			float speed_increase_factor = 1.01f;
 
 			/**

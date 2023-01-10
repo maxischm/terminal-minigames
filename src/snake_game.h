@@ -48,6 +48,9 @@ namespace TerminalMinigames
 
             /**
              * Prints the pixel to the given canvas in the given color by printing the individual points as blocks.
+             * 
+             * @param canvas Canvas pointer to print to.
+             * @param color Color to print the pixel in.
              */
             void DrawPixel(ftxui::Canvas* canvas, ftxui::Color color);
 
@@ -128,6 +131,9 @@ namespace TerminalMinigames
             }
         };
 
+        /**
+         * Structure defining the configuration of the Snake game.
+         */
         struct SnakeConfig
         {
             /**
@@ -181,19 +187,36 @@ namespace TerminalMinigames
         /**
          * Spawns food by putting it in the passed game state's food position set.
          * The newly added food position is then drawn on the next draw call of the canvas.
+         * 
+         * @param current_game_state Current game state to add to its food positions.
          */
         void SpawnFood(SnakeGameState* current_game_state);
 
         /**
          * Handles movement when an input was received.
+         * 
+         * @param new_head_pos New head position pixel.
+         * @param current_game_state Pointer to current game state.
+         * @param new_direction Direction to move the snake to.
+         * @param x_offset Offset to move the pixel along the x-axis by.
+         * @param y_offset Offset to move the pixel along the y-axis by.
          */
         void HandleInput(Pixel* new_head_pos, SnakeGameState* current_game_state, MovementDirection new_direction, int x_offset, int y_offset);
         /**
          * Handles snake movement when the movement direction is either left or right.
+         * 
+         * @param new_head_pos Pointer to new head position.
+         * @param current_game_state Pointer to current game state.
+         * @param moves_left Whether to move left (or right).
          */
         void HandleLeftRightMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_left);
+        
         /**
          * Handles snake movement when the movement direction is either up or down.
+         * 
+         * @param new_head_pos Poniter to new head position.
+         * @param current_game_state Pointer to current game state.
+         * @param moves_up Whether to move up (or down).
          */
         void HandleUpDownMovement(Pixel* new_head_pos, SnakeGameState* current_game_state, bool moves_up);
     
@@ -204,7 +227,22 @@ namespace TerminalMinigames
          */        
         void ExecuteSnake(QuitFunction quit_function, bool* back_to_menu);
 
+        /**
+         * Update function for the snake game.
+         * 
+         * @param screen Reference to screen to post events to.
+         * @param state Reference to current game state.
+         * @param back_flag Whether to return to the menu or not.
+         */
         void Update(ftxui::ScreenInteractive& screen, SnakeGameState& state, bool* back_flag);
+
+        /**
+         * Triggers the screen's loop function with the given component.
+         * Use in an individual thread.
+         * 
+         * @param screen Screen reference to loop.
+         * @param comp Component to loop on the screen.
+         */
         void UpdateScreen(ftxui::ScreenInteractive& screen, ftxui::Component& comp);
 
     } // namespace Snake
